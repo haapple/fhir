@@ -1,0 +1,115 @@
+
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+  <meta charset="UTF-8">
+  <title>FHIR 心跳資料查詢</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      margin: 30px;
+    }
+    button {
+      padding: 8px 16px;
+      margin-bottom: 16px;
+    }
+    table {
+      border-collapse: collapse;
+      width: 100%;
+      max-width: 900px;
+    }
+    th, td {
+      border: 1px solid #ccc;
+      padding: 8px;
+      text-align: center;
+    }
+    th {
+      background-color: #f0f0f0;
+    }
+  </style>
+</head>
+<body>
+
+<h2>心跳（Heart Rate）生理監測紀錄</h2>
+
+<p>
+  <strong>FHIR Server：</strong> https://hapi.fhir.org/baseR4/<br>
+  <strong>Patient ID：</strong> 53699906
+</p>
+
+<button onclick="loadHeartRate()">調閱心跳資料</button>
+
+<table id="resultTable">
+  <thead>
+    <tr>
+      <th>Observation ID</th>
+      <th>量測時間</th>
+      <th>心跳 (bpm)</th>
+      <th>狀態</th>
+    </tr>
+  </thead>
+  <tbody>
+    <!-- 資料動態填入 -->
+  </tbody>
+</table>
+
+<script>
+async function loadHeartRate() {
+  const url =
+    "https://hapi.fhir.org/baseR4/Observation" +
+    "?subject=Patient/53699906" +
+    "&code=http://loinc.org|8867-4" +
+    "&_sort=-date";
+
+  const tbody = document.querySelector("#resultTable tbody");
+  tbody.innerHTML = "";
+
+  try {
+    const response = await fetch(url, {
+      headers: {
+        "Accept": "application/fhir+json"
+      }
+    });
+
+    const bundle = await response.json();
+
+    if (!bundle.entry) {
+      tbody.innerHTML =
+        "<tr><td colspan='4'>查無心跳資料</td></tr>";
+      return;
+    }
+
+    bundle.entry.forEach(entry => {
+      const obs = entry.resource;
+
+      const id = obs.id || "";
+      const time = obs.effectiveDateTime || "";
+      const value =
+        obs.valueQuantity && obs.valueQuantity.value
+          ? obs.valueQuantity.value
+          : "";
+      const unit =
+        obs.valueQuantity && obs.valueQuantity.unit
+          ? obs.valueQuantity.unit
+          : "";
+      const status = obs.status || "";
+
+      const row = document.createElement("tr");
+      row.innerHTML = `
+        <td>${id}</td>
+        <td>${time}</td>
+        <td>${value} ${unit}</td>
+        <td>${status}</td>
+      `;
+      tbody.appendChild(row);
+    });
+
+  } catch (error) {
+    tbody.innerHTML =
+      "<tr><td colspan='4'>讀取失敗：" + error + "</td></tr>";
+  }
+}
+</script>
+
+</body>
+</html>

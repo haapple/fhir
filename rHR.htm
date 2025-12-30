@@ -1,0 +1,98 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>調閱心跳生理監測紀錄</title>
+  <style>
+    body { font-family: Arial, sans-serif; padding: 20px; max-width: 900px; margin: auto; }
+    h2 { text-align: center; }
+    button { display: block; margin: 20px auto; padding: 10px 20px; font-size: 16px; }
+    table { width: 100%; border-collapse: collapse; margin-top: 20px; }
+    th, td { border: 1px solid #ccc; padding: 10px; text-align: left; }
+    th { background-color: #f2f2f2; }
+    .loading { text-align: center; color: #007bff; }
+    .error { color: red; margin-top: 15px; white-space: pre-wrap; }
+    .no-data { text-align: center; color: #666; padding: 20px; }
+  </style>
+</head>
+<body>
+
+  <h2>心跳生理監測紀錄（Patient ID: 53688389）</h2>
+  <button onclick="fetchHeartRateObservations()">🔄 調閱心跳紀錄</button>
+
+  <div id="loading" class="loading" style="display:none;">讀取中...</div>
+  <div id="error" class="error" style="display:none;"></div>
+  <div id="noData" class="no-data" style="display:none;">尚無心跳紀錄</div>
+  <table id="observationTable" style="display:none;">
+    <thead>
+      <tr>
+        <th>記錄時間（UTC）</th>
+        <th>心跳（bpm）</th>
+        <th>狀態</th>
+        <th>Observation ID</th>
+      </tr>
+    </thead>
+    <tbody id="tableBody"></tbody>
+  </table>
+
+  <script>
+    async function fetchHeartRateObservations() {
+      const patientId = '53688389';
+      const serverUrl = 'https://hapi.fhir.org/baseR4/';
+      const url = `${serverUrl}Observation?subject=Patient/${patientId}&code=8867-4`;
+
+      const loading = document.getElementById('loading');
+      const errorDiv = document.getElementById('error');
+      const noDataDiv = document.getElementById('noData');
+      const table = document.getElementById('observationTable');
+      const tbody = document.getElementById('tableBody');
+
+      // 重置狀態
+      loading.style.display = 'block';
+      errorDiv.style.display = 'none';
+      noDataDiv.style.display = 'none';
+      table.style.display = 'none';
+      tbody.innerHTML = '';
+
+      try {
+        const response = await fetch(url);
+        if (!response.ok) {
+          throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+        }
+
+        const bundle = await response.json();
+
+        if (!bundle.entry || bundle.entry.length === 0) {
+          noDataDiv.style.display = 'block';
+        } else {
+          bundle.entry.forEach(entry => {
+            const obs = entry.resource;
+            if (obs.resourceType !== 'Observation') return;
+
+            const effective = obs.effectiveDateTime || obs.effectiveInstant || 'N/A';
+            const value = obs.valueQuantity?.value || 'N/A';
+            const unit = obs.valueQuantity?.unit || 'bpm';
+            const status = obs.status || 'unknown';
+            const id = obs.id || 'N/A';
+
+            // 建立表格列
+            const row = tbody.insertRow();
+            row.insertCell(0).textContent = new Date(effective).toLocaleString('zh-TW', { timeZone: 'UTC' }) + ' (UTC)';
+            row.insertCell(1).textContent = value + ' ' + unit;
+            row.insertCell(2).textContent = status;
+            row.insertCell(3).textContent = id;
+          });
+
+          table.style.display = 'table';
+        }
+      } catch (err) {
+        errorDiv.textContent = '⚠️ 調閱失敗：' + err.message;
+        errorDiv.style.display = 'block';
+      } finally {
+        loading.style.display = 'none';
+      }
+    }
+  </script>
+</body>
+</html>

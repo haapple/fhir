@@ -1,0 +1,143 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+  <meta charset="UTF-8">
+  <title>乳房攝影 Mass → FHIR Observation</title>
+  < style >
+    body { font-family: Arial, sans-serif; margin: 30px; }
+    label { display: block; margin-top: 10px; }
+    textarea, select, input { width: 100%; padding: 6px; }
+    button { margin-top: 15px; padding: 10px; }
+    pre { background: #f4f4f4; padding: 15px; }
+  </style>
+</head>
+
+<body>
+
+<h2>乳房攝影 Mass 描述 → FHIR 影像發現</h2>
+
+<label>Patient ID</label>
+<input id="patientId" value="Patient/example" />
+
+<label>側別</label>
+<select id="laterality">
+  <option value="left">左乳</option>
+  <option value="right">右乳</option>
+</select>
+
+<label>位置（象限）</label>
+<select id="quadrant">
+  <option>UOQ</option>
+  <option>UIQ</option>
+  <option>LOQ</option>
+  <option>LIQ</option>
+  <option>Retroareolar</option>
+</select>
+
+<label>大小（cm）</label>
+<input id="size" placeholder="例如 1.8" />
+
+<label>形狀（Shape）</label>
+<select id="shape">
+  <option>Round</option>
+  <option>Oval</option>
+  <option>Irregular</option>
+</select>
+
+<label>邊緣（Margin）</label>
+<select id="margin">
+  <option>Circumscribed</option>
+  <option>Obscured</option>
+  <option>Microlobulated</option>
+  <option>Indistinct</option>
+  <option>Spiculated</option>
+</select>
+
+<label>密度（Density）</label>
+<select id="density">
+  <option>Low</option>
+  <option>Iso-dense</option>
+  <option>High</option>
+</select>
+
+<label>BI-RADS 分類</label>
+<select id="birads">
+  <option value="2">BI-RADS 2</option>
+  <option value="3">BI-RADS 3</option>
+  <option value="4">BI-RADS 4</option>
+  <option value="5">BI-RADS 5</option>
+</select>
+
+<button onclick="generateFHIR()">產生 FHIR Observation</button>
+
+<h3>FHIR JSON</h3>
+<pre id="output"></pre>
+
+<script>
+function generateFHIR() {
+  const fhir = {
+    resourceType: "Observation",
+    status: "final",
+    category: [{
+      coding: [{
+        system: "http://terminology.hl7.org/CodeSystem/observation-category",
+        code: "imaging",
+        display: "Imaging"
+      }]
+    }],
+    code: {
+      coding: [{
+        system: "http://snomed.info/sct",
+        code: "397144000",
+        display: "Breast mass"
+      }],
+      text: "Mammography breast mass"
+    },
+    subject: {
+      reference: document.getElementById("patientId").value
+    },
+    component: [
+      {
+        code: { text: "Laterality" },
+        valueString: document.getElementById("laterality").value
+      },
+      {
+        code: { text: "Quadrant" },
+        valueString: document.getElementById("quadrant").value
+      },
+      {
+        code: { text: "Size" },
+        valueQuantity: {
+          value: parseFloat(document.getElementById("size").value),
+          unit: "cm"
+        }
+      },
+      {
+        code: { text: "Shape" },
+        valueString: document.getElementById("shape").value
+      },
+      {
+        code: { text: "Margin" },
+        valueString: document.getElementById("margin").value
+      },
+      {
+        code: { text: "Density" },
+        valueString: document.getElementById("density").value
+      }
+    ],
+    interpretation: [{
+      coding: [{
+        system: "http://terminology.hl7.org/CodeSystem/v3-ObservationInterpretation",
+        code: "BIRADS-" + document.getElementById("birads").value,
+        display: "BI-RADS " + document.getElementById("birads").value
+      }]
+    }]
+  };
+
+  document.getElementById("output").textContent =
+    JSON.stringify(fhir, null, 2);
+}
+</script>
+
+</body>
+</html>

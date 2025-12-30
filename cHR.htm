@@ -1,0 +1,100 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>上傳心跳生理監測至 FHIR</title>
+  <style>
+    body { font-family: Arial, sans-serif; padding: 20px; max-width: 600px; margin: auto; }
+    label { display: block; margin-top: 15px; font-weight: bold; }
+    input { width: 100%; padding: 8px; margin-top: 5px; }
+    button { margin-top: 20px; padding: 12px 24px; font-size: 16px; background: #007bff; color: white; border: none; cursor: pointer; }
+    button:hover { background: #0056b3; }
+    #result { margin-top: 20px; padding: 12px; background: #f8f9fa; border-left: 4px solid #007bff; white-space: pre-wrap; overflow-wrap: break-word; }
+    .success { border-left-color: green; color: green; }
+    .error { border-left-color: red; color: red; }
+  </style>
+</head>
+<body>
+  <h2>上傳心跳生理監測（Observation）</h2>
+  <p>此表單將建立一筆「心跳」觀察紀錄，並關聯到 Patient ID: <code>53688389</code></p>
+
+  <label for="heartRate">心跳 (bpm):</label>
+  <input type="number" id="heartRate" min="30" max="200" placeholder="例如：72" required />
+
+  <button onclick="submitHeartRateObservation()">上傳心跳至 FHIR Server</button>
+
+  <pre id="result"></pre>
+
+  <script>
+    async function submitHeartRateObservation() {
+      const heartRate = parseFloat(document.getElementById('heartRate').value);
+      const patientId = '53688389';
+      const serverUrl = 'https://hapi.fhir.org/baseR4/';
+
+      if (isNaN(heartRate) || heartRate < 30 || heartRate > 200) {
+        showResult('❌ 心跳值需為 30–200 之間的數字', 'error');
+        return;
+      }
+
+      // 構建 FHIR Observation 資源（心跳）
+      const observation = {
+        resourceType: "Observation",
+        status: "final",
+        category: [{
+          coding: [{
+            system: "http://terminology.hl7.org/CodeSystem/observation-category",
+            code: "vital-signs",
+            display: "Vital Signs"
+          }],
+          text: "Vital Signs"
+        }],
+        code: {
+          coding: [{
+            system: "http://loinc.org",
+            code: "8867-4",
+            display: "Heart rate"
+          }],
+          text: "Heart rate"
+        },
+        subject: {
+          reference: `Patient/${patientId}`
+        },
+        effectiveDateTime: new Date().toISOString(), // 當前時間
+        valueQuantity: {
+          value: heartRate,
+          unit: "beats/minute",
+          system: "http://unitsofmeasure.org",
+          code: "/min"
+        }
+      };
+
+      try {
+        const response = await fetch(`${serverUrl}Observation`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/fhir+json; charset=utf-8'
+          },
+          body: JSON.stringify(observation)
+        });
+
+        const resultText = await response.text();
+
+        if (response.ok) {
+          showResult(`✅ 上傳成功！\n伺服器回應:\n${resultText}`, 'success');
+        } else {
+          showResult(`❌ 上傳失敗 (HTTP ${response.status})\n${resultText}`, 'error');
+        }
+      } catch (error) {
+        showResult(`⚠️ 網路錯誤：${error.message}`, 'error');
+      }
+    }
+
+    function showResult(text, type) {
+      const resultDiv = document.getElementById('result');
+      resultDiv.textContent = text;
+      resultDiv.className = type;
+    }
+  </script>
+</body>
+</html>

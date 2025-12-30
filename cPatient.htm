@@ -1,0 +1,83 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>FHIR Patient 上傳工具</title>
+  <style>
+    body { font-family: Arial, sans-serif; padding: 20px; max-width: 600px; margin: auto; }
+    label { display: block; margin-top: 10px; }
+    input { width: 100%; padding: 6px; margin-top: 4px; }
+    button { margin-top: 20px; padding: 10px 20px; font-size: 16px; }
+    #result { margin-top: 20px; padding: 10px; background: #f4f4f4; white-space: pre-wrap; }
+  </style>
+</head>
+<body>
+  <h2>新增 FHIR Patient</h2>
+
+  <label for="name">姓名（全名）:</label>
+  <input type="text" id="name" placeholder="例如：張大明" required />
+
+  <label for="gender">性別:</label>
+  <select id="gender" required>
+    <option value="male">男</option>
+    <option value="female">女</option>
+    <option value="other">其他</option>
+    <option value="unknown">未知</option>
+  </select>
+
+  <label for="birthdate">生日:</label>
+  <input type="date" id="birthdate" required />
+
+  <button onclick="submitPatient()">上傳至 FHIR Server</button>
+
+  <div id="result"></div>
+
+  <script>
+    async function submitPatient() {
+      const name = document.getElementById('name').value.trim();
+      const gender = document.getElementById('gender').value;
+      const birthdate = document.getElementById('birthdate').value;
+
+      if (!name || !birthdate) {
+        alert('請填寫姓名與生日');
+        return;
+      }
+
+      // 構建 FHIR Patient 資源
+      const patientResource = {
+        resourceType: 'Patient',
+        name: [{ use: 'official', given: [name] }],
+        gender: gender,
+        birthDate: birthdate
+      };
+
+      const url = 'https://hapi.fhir.org/baseR4/Patient';
+
+      try {
+        const response = await fetch(url, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/fhir+json; charset=utf-8'
+          },
+          body: JSON.stringify(patientResource)
+        });
+
+        const resultText = await response.text();
+
+        const resultDiv = document.getElementById('result');
+        if (response.ok) {
+          resultDiv.style.color = 'green';
+          resultDiv.textContent = '✅ 上傳成功！伺服器回應：\n' + resultText;
+        } else {
+          resultDiv.style.color = 'red';
+          resultDiv.textContent = '❌ 上傳失敗（狀態碼 ' + response.status + '）：\n' + resultText;
+        }
+      } catch (error) {
+        document.getElementById('result').style.color = 'red';
+        document.getElementById('result').textContent = '⚠️ 發生錯誤：' + error.message;
+      }
+    }
+  </script>
+</body>
+</html>
